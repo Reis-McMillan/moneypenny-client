@@ -54,7 +54,7 @@ export function useChat() {
     state.messages = []
   }
 
-  async function sendMessage(text) {
+  async function sendMessage(text, tokenId = null) {
     state.messages.push({ role: 'human', content: text })
     state.messages.push({ role: 'ai', content: '' })
     state.streaming = true
@@ -64,7 +64,7 @@ export function useChat() {
       : '/chat'
 
     try {
-      const response = await streamPost(path, { message: text })
+      const response = await streamPost(path, { message: text, token_id: tokenId })
 
       if (!response.ok) {
         const aiMsg = state.messages[state.messages.length - 1]
@@ -82,11 +82,12 @@ export function useChat() {
         if (done) break
 
         buffer += decoder.decode(value, { stream: true })
-        const parts = buffer.split('\n\n')
+        const parts = buffer.split('\r\n\r\n')
         buffer = parts.pop()
 
         for (const part of parts) {
-          const lines = part.split('\n')
+          if (!part.trim()) continue
+          const lines = part.split('\r\n')
           let event = ''
           let data = ''
 
@@ -98,10 +99,17 @@ export function useChat() {
             }
           }
 
+          if (!data) continue
+
           const aiMsg = state.messages[state.messages.length - 1]
 
-          if (event === 'token') {
-            aiMsg.content += data
+          if (event === 'chunk') {
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.content) aiMsg.content += parsed.content
+            } catch {
+              // malformed chunk, skip
+            }
           } else if (event === 'metadata') {
             try {
               const meta = JSON.parse(data)

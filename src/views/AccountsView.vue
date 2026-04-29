@@ -2,9 +2,6 @@
 import { ref, onMounted } from 'vue'
 import AppLayout from '../components/AppLayout.vue'
 import { api } from '../api/client.js'
-import { useAuth } from '../composables/useAuth.js'
-
-const { ensureBackendSetup } = useAuth()
 
 const accounts = ref([])
 const loading = ref(true)
@@ -18,13 +15,6 @@ async function fetchAccounts() {
     const res = await api.get('/accounts')
     if (res.ok) {
       accounts.value = await res.json()
-    } else if (res.status === 403) {
-      const data = await res.json().catch(() => ({}))
-      if (data.setup_required) {
-        window.location.href = `${import.meta.env.VITE_MONEYPENNY_BASE_URL || '/api'}${data.redirect_url}`
-        return
-      }
-      error.value = 'Access denied.'
     } else {
       error.value = 'Failed to load accounts.'
     }
@@ -53,7 +43,6 @@ async function linkAccount(providerId) {
 }
 
 onMounted(async () => {
-  await ensureBackendSetup()
   await fetchAccounts()
 })
 </script>

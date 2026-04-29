@@ -6,11 +6,10 @@ import ThreadList from '../components/ThreadList.vue'
 import ChatMessage from '../components/ChatMessage.vue'
 import ChatInput from '../components/ChatInput.vue'
 import { useChat } from '../composables/useChat.js'
-import { useAuth } from '../composables/useAuth.js'
+import { api } from '../api/client.js'
 
 const route = useRoute()
 const router = useRouter()
-const { ensureBackendSetup } = useAuth()
 const {
   threads,
   activeThreadId,
@@ -23,6 +22,7 @@ const {
 } = useChat()
 
 const messagesContainer = ref(null)
+const accounts = ref([])
 
 function shouldAutoScroll() {
   const el = messagesContainer.value
@@ -43,8 +43,8 @@ watch(messages, () => {
   }
 }, { deep: true })
 
-async function handleSend(text) {
-  await sendMessage(text)
+async function handleSend({ text, token_id }) {
+  await sendMessage(text, token_id)
   if (activeThreadId.value && route.params.threadId !== activeThreadId.value) {
     router.replace(`/chat/${activeThreadId.value}`)
   }
@@ -60,9 +60,20 @@ function handleNewChat() {
   router.push('/chat')
 }
 
+async function fetchAccounts() {
+  try {
+    const res = await api.get('/accounts')
+    if (res.ok) {
+      accounts.value = await res.json()
+    }
+  } catch {
+    // accounts list is best-effort; ChatInput falls back to "All accounts"
+  }
+}
+
 onMounted(async () => {
   loadThreads()
-  await ensureBackendSetup()
+  fetchAccounts()
 
   if (route.params.threadId) {
     await loadThread(route.params.threadId)
@@ -101,7 +112,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <ChatInput :disabled="streaming" @send="handleSend" />
+        <ChatInput :disabled="streaming" :accounts="accounts" @send="handleSend" />
       </div>
     </div>
   </AppLayout>

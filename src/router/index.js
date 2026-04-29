@@ -3,19 +3,19 @@ import { useAuth } from '../composables/useAuth.js'
 
 import LoginView from '../views/LoginView.vue'
 import CallbackView from '../views/CallbackView.vue'
-import SetupCompleteView from '../views/SetupCompleteView.vue'
 import LogoutView from '../views/LogoutView.vue'
 import ChatView from '../views/ChatView.vue'
 import AccountsView from '../views/AccountsView.vue'
+import IngestionView from '../views/IngestionView.vue'
 
 const routes = [
   { path: '/', redirect: '/chat' },
   { path: '/login', name: 'Login', component: LoginView, meta: { guest: true } },
   { path: '/callback', name: 'Callback', component: CallbackView },
-  { path: '/setup-complete', name: 'SetupComplete', component: SetupCompleteView },
   { path: '/chat', name: 'Chat', component: ChatView, meta: { auth: true } },
   { path: '/chat/:threadId', name: 'ChatThread', component: ChatView, meta: { auth: true } },
   { path: '/accounts', name: 'Accounts', component: AccountsView, meta: { auth: true } },
+  { path: '/ingestion', name: 'Ingestion', component: IngestionView, meta: { auth: true } },
   { path: '/logout', name: 'Logout', component: LogoutView },
 ]
 
@@ -25,7 +25,7 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  if (to.name === 'Callback' || to.name === 'SetupComplete') return
+  if (to.name === 'Callback') return
 
   const { isAuthenticated, loading, fetchUser } = useAuth()
 

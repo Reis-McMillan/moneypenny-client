@@ -2,7 +2,7 @@ import { reactive, computed } from 'vue'
 import { setTokens as storeTokens, clearTokens, getTokens, exchangeToken } from '../api/client.js'
 import { generateCodeVerifier, generateCodeChallenge, generateState } from '../lib/pkce.js'
 import { decodeJwtPayload } from '../lib/jwt.js'
-import { OAUTH2_CONFIG, API_CONFIG } from '../config.js'
+import { OAUTH2_CONFIG } from '../config.js'
 
 const state = reactive({
   user: null,
@@ -101,17 +101,6 @@ export function useAuth() {
     }
   }
 
-  async function ensureBackendSetup() {
-    const { exchangedToken } = getTokens()
-    if (exchangedToken) return false
-
-    const exchanged = await exchangeToken()
-    if (exchanged) return false
-
-    window.location.href = `${API_CONFIG.baseUrl}/auth/initialize`
-    return true
-  }
-
   async function logout() {
     const { refreshToken, idToken } = getTokens()
 
@@ -134,6 +123,7 @@ export function useAuth() {
     if (idToken) params.set('id_token_hint', idToken)
     params.set('post_logout_redirect_uri', `${window.location.origin}/logout`)
 
+    // do we need to move the user or can we make this call ourselves?
     window.location.href = `${OAUTH2_CONFIG.endSessionEndpoint}?${params}`
   }
 
@@ -144,7 +134,6 @@ export function useAuth() {
     fetchUser,
     startOAuthFlow,
     handleCallback,
-    ensureBackendSetup,
     logout,
   }
 }
