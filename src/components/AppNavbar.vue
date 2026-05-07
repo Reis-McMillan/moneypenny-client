@@ -1,16 +1,26 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
+import { useActions } from '../composables/useActions.js'
 
 const router = useRouter()
 const { isAuthenticated, user, logout } = useAuth()
+const { hasActions, loadActions } = useActions()
 const isCollapsed = ref(false)
 
 async function handleLogout() {
   await logout()
   router.push('/login')
 }
+
+onMounted(() => {
+  if (isAuthenticated.value) loadActions()
+})
+
+watch(isAuthenticated, (val) => {
+  if (val) loadActions()
+})
 </script>
 
 <template>
@@ -46,12 +56,27 @@ async function handleLogout() {
 
       <router-link
         to="/accounts"
-        class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium hover:text-white hover:bg-slate-800 transition-colors"
+        class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium hover:text-white hover:bg-slate-800 transition-colors relative"
       >
-        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-        </svg>
-        <span v-if="!isCollapsed">Accounts</span>
+        <span class="relative shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          <span
+            v-if="hasActions"
+            class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 ring-2 ring-slate-900"
+            aria-label="Re-authorization required"
+          />
+        </span>
+        <span v-if="!isCollapsed" class="flex items-center gap-2">
+          Accounts
+          <span
+            v-if="hasActions"
+            class="text-[10px] uppercase tracking-wider text-red-400 font-semibold"
+          >
+            Reauth
+          </span>
+        </span>
       </router-link>
 
       <router-link

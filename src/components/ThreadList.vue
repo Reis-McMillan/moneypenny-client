@@ -4,17 +4,23 @@ defineProps({
   activeThreadId: { type: String, default: null },
 })
 
-const emit = defineEmits(['select', 'new-chat'])
+const emit = defineEmits(['select', 'new-chat', 'draft-email'])
 </script>
 
 <template>
   <div class="flex flex-col h-full">
-    <div class="p-3">
+    <div class="p-3 flex flex-col gap-2">
       <button
         @click="emit('new-chat')"
         class="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
       >
         New Chat
+      </button>
+      <button
+        @click="emit('draft-email')"
+        class="w-full py-2 px-4 border border-indigo-500/50 text-indigo-300 hover:bg-indigo-500/10 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+      >
+        Draft Email
       </button>
     </div>
 

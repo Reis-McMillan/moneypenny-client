@@ -2,11 +2,20 @@
 import { ref, onMounted } from 'vue'
 import AppLayout from '../components/AppLayout.vue'
 import { api } from '../api/client.js'
+import { useActions } from '../composables/useActions.js'
 
 const accounts = ref([])
 const loading = ref(true)
 const error = ref('')
 const showProviders = ref(false)
+
+const { loadActions, findActionForToken } = useActions()
+
+function reauth(action) {
+  if (action?.reauth_url) {
+    window.location.href = action.reauth_url
+  }
+}
 
 async function fetchAccounts() {
   loading.value = true
@@ -43,7 +52,7 @@ async function linkAccount(providerId) {
 }
 
 onMounted(async () => {
-  await fetchAccounts()
+  await Promise.all([fetchAccounts(), loadActions()])
 })
 </script>
 
@@ -68,12 +77,24 @@ onMounted(async () => {
         <div
           v-for="account in accounts"
           :key="`${account.provider_id}-${account.subject}`"
-          class="bg-gray-900 border border-gray-800 rounded-xl p-6"
+          class="rounded-xl p-6 border"
+          :class="findActionForToken(account.token_id) ? 'border-red-500/50 bg-red-950/20' : 'border-gray-800 bg-gray-900'"
         >
           <div class="text-sm text-gray-400 mb-1">Provider</div>
           <div class="text-white font-medium mb-3 capitalize">{{ account.provider_id }}</div>
           <div class="text-sm text-gray-400 mb-1">Account</div>
-          <div class="text-gray-300 text-sm font-mono truncate">{{ account.subject }}</div>
+          <div class="text-gray-300 text-sm font-mono truncate">{{ account.email }}</div>
+
+          <button
+            v-if="findActionForToken(account.token_id)"
+            @click="reauth(findActionForToken(account.token_id))"
+            class="mt-4 w-full px-3 py-2 bg-red-600/90 hover:bg-red-500 text-white text-sm font-medium rounded-md transition-colors cursor-pointer flex items-center justify-center gap-2"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Re-authorize required
+          </button>
         </div>
 
         <div class="relative">

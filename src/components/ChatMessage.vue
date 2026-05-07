@@ -6,6 +6,7 @@ import DOMPurify from 'dompurify'
 const props = defineProps({
   role: { type: String, required: true },
   content: { type: String, required: true },
+  loading: { type: Boolean, default: false },
 })
 
 marked.setOptions({ gfm: true, breaks: true })
@@ -30,6 +31,15 @@ const renderedContent = computed(() => {
         class="px-4 py-3 text-sm bg-gray-800 text-gray-100 rounded-xl rounded-bl-sm chat-md"
         v-html="renderedContent"
       />
+      <div
+        v-else-if="loading"
+        class="px-4 py-3 bg-gray-800 rounded-xl rounded-bl-sm flex items-end gap-1.5 h-10"
+        aria-label="Assistant is responding"
+      >
+        <span class="dot" />
+        <span class="dot" />
+        <span class="dot" />
+      </div>
     </div>
   </div>
 </template>
@@ -67,5 +77,21 @@ const renderedContent = computed(() => {
   padding-left: 0.75rem;
   margin: 0.25rem 0;
   color: #d1d5db;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d1d5db;
+  display: inline-block;
+  animation: dot-bounce 1.2s infinite ease-in-out;
+}
+.dot:nth-child(2) { animation-delay: 0.15s; }
+.dot:nth-child(3) { animation-delay: 0.30s; }
+
+@keyframes dot-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-6px); opacity: 1; }
 }
 </style>

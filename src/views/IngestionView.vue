@@ -7,7 +7,26 @@ const counts = ref(null)
 const status = ref(null)
 const loading = ref(true)
 const error = ref('')
+const triggering = ref(new Set())
 let timer = null
+
+async function triggerIngest(tokenId) {
+  if (triggering.value.has(tokenId)) return
+  triggering.value.add(tokenId)
+  try {
+    const res = await api.post(`/ingest/trigger?token_id=${tokenId}`)
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({}))
+      error.value = detail.detail || `Failed to trigger ingestion (${res.status}).`
+      return
+    }
+    await fetchAll()
+  } catch {
+    error.value = 'Network error while triggering ingestion.'
+  } finally {
+    triggering.value.delete(tokenId)
+  }
+}
 
 async function fetchAll() {
   error.value = ''
@@ -116,6 +135,7 @@ onBeforeUnmount(() => {
                   <th class="text-left font-medium py-2">Task Alive</th>
                   <th class="text-left font-medium py-2">Last Run</th>
                   <th class="text-left font-medium py-2">Last Error</th>
+                  <th class="text-right font-medium py-2">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -150,6 +170,15 @@ onBeforeUnmount(() => {
                       <div class="text-gray-500 text-[10px] mt-0.5">{{ formatTime(svc.last_error_at) }}</div>
                     </div>
                     <span v-else class="text-gray-600">—</span>
+                  </td>
+                  <td class="py-2 text-right">
+                    <button
+                      @click="triggerIngest(svc.token_id)"
+                      :disabled="triggering.has(svc.token_id) || svc.currently_ingesting"
+                      class="px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {{ triggering.has(svc.token_id) ? 'Triggering…' : 'Trigger' }}
+                    </button>
                   </td>
                 </tr>
               </tbody>

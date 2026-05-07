@@ -1,5 +1,5 @@
 <script setup>
-import { ref, nextTick, computed, watch } from 'vue'
+import { ref, nextTick, watch } from 'vue'
 
 const props = defineProps({
   disabled: { type: Boolean, default: false },
@@ -33,17 +33,16 @@ watch(selectedTokenId, (val) => {
 watch(
   () => props.accounts,
   (accs) => {
-    if (selectedTokenId.value === null) return
-    const stillExists = accs.some((a) => a.token_id === selectedTokenId.value)
-    if (!stillExists) selectedTokenId.value = null
+    if (!accs.length) {
+      selectedTokenId.value = null
+      return
+    }
+    const valid =
+      selectedTokenId.value !== null &&
+      accs.some((a) => a.token_id === selectedTokenId.value)
+    if (!valid) selectedTokenId.value = accs[0].token_id
   },
 )
-
-const accountLabel = computed(() => {
-  if (selectedTokenId.value === null) return 'All accounts'
-  const acc = props.accounts.find((a) => a.token_id === selectedTokenId.value)
-  return acc?.email || acc?.subject || `token_id=${selectedTokenId.value}`
-})
 
 function autoGrow() {
   const el = textarea.value
@@ -68,32 +67,29 @@ function handleSend() {
 }
 
 function onSelectChange(e) {
-  const v = e.target.value
-  selectedTokenId.value = v === '' ? null : Number(v)
+  selectedTokenId.value = Number(e.target.value)
 }
 </script>
 
 <template>
   <form @submit.prevent="handleSend" class="flex flex-col gap-2 p-4 border-t border-gray-800 bg-gray-950">
-    <div class="flex items-center gap-2 text-xs text-gray-400">
+    <div v-if="accounts.length" class="flex items-center gap-2 text-xs text-gray-400">
       <label for="account-select" class="shrink-0">Account:</label>
       <select
         id="account-select"
-        :value="selectedTokenId === null ? '' : selectedTokenId"
+        :value="selectedTokenId"
         @change="onSelectChange"
         :disabled="disabled"
         class="bg-gray-800 border border-gray-700 rounded-md text-gray-200 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       >
-        <option value="">All accounts</option>
         <option
           v-for="acc in accounts"
           :key="acc.token_id"
           :value="acc.token_id"
         >
-          {{ acc.email || acc.subject }}
+          {{ acc.email }}
         </option>
       </select>
-      <span class="text-gray-500 truncate">→ {{ accountLabel }}</span>
     </div>
 
     <div class="flex items-end gap-3">

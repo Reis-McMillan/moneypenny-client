@@ -5,8 +5,12 @@ import AppLayout from '../components/AppLayout.vue'
 import ThreadList from '../components/ThreadList.vue'
 import ChatMessage from '../components/ChatMessage.vue'
 import ChatInput from '../components/ChatInput.vue'
+import ConsentPrompt from '../components/ConsentPrompt.vue'
+import DraftEmailModal from '../components/DraftEmailModal.vue'
 import { useChat } from '../composables/useChat.js'
 import { api } from '../api/client.js'
+
+const SELECTED_TOKEN_KEY = 'moneypenny_selected_token_id'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,14 +19,26 @@ const {
   activeThreadId,
   messages,
   streaming,
+  pendingInterrupts,
   loadThreads,
   loadThread,
   newChat,
   sendMessage,
+  draftEmail,
+  respond,
 } = useChat()
 
 const messagesContainer = ref(null)
 const accounts = ref([])
+const draftModalOpen = ref(false)
+let accountsPromise = null
+
+function persistedTokenId() {
+  const raw = localStorage.getItem(SELECTED_TOKEN_KEY)
+  if (raw === null || raw === '' || raw === 'null') return null
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : null
+}
 
 function shouldAutoScroll() {
   const el = messagesContainer.value
@@ -44,6 +60,11 @@ watch(messages, () => {
 }, { deep: true })
 
 async function handleSend({ text, token_id }) {
+  if (accountsPromise) await accountsPromise
+  if (!accounts.value.length) {
+    router.push('/accounts')
+    return
+  }
   await sendMessage(text, token_id)
   if (activeThreadId.value && route.params.threadId !== activeThreadId.value) {
     router.replace(`/chat/${activeThreadId.value}`)
@@ -60,6 +81,23 @@ function handleNewChat() {
   router.push('/chat')
 }
 
+async function handleDraftEmail() {
+  if (accountsPromise) await accountsPromise
+  if (!accounts.value.length) {
+    router.push('/accounts')
+    return
+  }
+  draftModalOpen.value = true
+}
+
+async function handleDraftSubmit(payload) {
+  draftModalOpen.value = false
+  await draftEmail(payload)
+  if (activeThreadId.value && route.params.threadId !== activeThreadId.value) {
+    router.replace(`/chat/${activeThreadId.value}`)
+  }
+}
+
 async function fetchAccounts() {
   try {
     const res = await api.get('/accounts')
@@ -67,13 +105,13 @@ async function fetchAccounts() {
       accounts.value = await res.json()
     }
   } catch {
-    // accounts list is best-effort; ChatInput falls back to "All accounts"
+    // accounts left empty on failure; handleSend will redirect to /accounts
   }
 }
 
 onMounted(async () => {
   loadThreads()
-  fetchAccounts()
+  accountsPromise = fetchAccounts()
 
   if (route.params.threadId) {
     await loadThread(route.params.threadId)
@@ -90,6 +128,7 @@ onMounted(async () => {
           :activeThreadId="activeThreadId"
           @select="handleSelectThread"
           @new-chat="handleNewChat"
+          @draft-email="handleDraftEmail"
         />
       </aside>
 
@@ -101,6 +140,7 @@ onMounted(async () => {
               :key="i"
               :role="msg.role"
               :content="msg.content"
+              :loading="streaming && i === messages.length - 1 && msg.role === 'ai'"
             />
           </template>
           <div v-else class="h-full flex flex-col items-center justify-center text-center">
@@ -112,8 +152,28 @@ onMounted(async () => {
           </div>
         </div>
 
-        <ChatInput :disabled="streaming" :accounts="accounts" @send="handleSend" />
+        <ConsentPrompt
+          v-if="pendingInterrupts.length"
+          :interrupt="pendingInterrupts[0]"
+          :disabled="streaming"
+          @approve="(id) => respond(id, 'approve')"
+          @reject="(id) => respond(id, 'reject')"
+        />
+
+        <ChatInput
+          :disabled="streaming || pendingInterrupts.length > 0"
+          :accounts="accounts"
+          @send="handleSend"
+        />
       </div>
     </div>
+
+    <DraftEmailModal
+      :open="draftModalOpen"
+      :accounts="accounts"
+      :defaultTokenId="persistedTokenId()"
+      @close="draftModalOpen = false"
+      @submit="handleDraftSubmit"
+    />
   </AppLayout>
 </template>
