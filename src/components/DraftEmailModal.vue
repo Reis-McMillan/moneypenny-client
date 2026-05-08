@@ -60,10 +60,9 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 <template>
   <div
     v-if="open"
-    class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
-    @click.self="emit('close')"
+    class="border-t border-gray-800 bg-gray-900 px-4 py-4"
   >
-    <div class="bg-gray-900 border border-gray-800 rounded-xl shadow-2xl w-full max-w-lg p-6">
+    <div class="max-w-2xl mx-auto">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold text-white">Draft Email</h2>
         <button

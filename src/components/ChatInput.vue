@@ -6,7 +6,7 @@ const props = defineProps({
   accounts: { type: Array, default: () => [] },
 })
 
-const emit = defineEmits(['send'])
+const emit = defineEmits(['send', 'draft-email'])
 
 const STORAGE_KEY = 'moneypenny_selected_token_id'
 
@@ -73,23 +73,33 @@ function onSelectChange(e) {
 
 <template>
   <form @submit.prevent="handleSend" class="flex flex-col gap-2 p-4 border-t border-gray-800 bg-gray-950">
-    <div v-if="accounts.length" class="flex items-center gap-2 text-xs text-gray-400">
-      <label for="account-select" class="shrink-0">Account:</label>
-      <select
-        id="account-select"
-        :value="selectedTokenId"
-        @change="onSelectChange"
-        :disabled="disabled"
-        class="bg-gray-800 border border-gray-700 rounded-md text-gray-200 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-      >
-        <option
-          v-for="acc in accounts"
-          :key="acc.token_id"
-          :value="acc.token_id"
+    <div class="flex items-center gap-2 text-xs text-gray-400">
+      <template v-if="accounts.length">
+        <label for="account-select" class="shrink-0">Account:</label>
+        <select
+          id="account-select"
+          :value="selectedTokenId"
+          @change="onSelectChange"
+          :disabled="disabled"
+          class="bg-gray-800 border border-gray-700 rounded-md text-gray-200 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
-          {{ acc.email }}
-        </option>
-      </select>
+          <option
+            v-for="acc in accounts"
+            :key="acc.token_id"
+            :value="acc.token_id"
+          >
+            {{ acc.email }}
+          </option>
+        </select>
+      </template>
+      <button
+        type="button"
+        @click="emit('draft-email')"
+        :disabled="disabled"
+        class="ml-auto px-3 py-1 border border-indigo-500/50 text-indigo-300 hover:bg-indigo-500/10 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors cursor-pointer"
+      >
+        Draft Email
+      </button>
     </div>
 
     <div class="flex items-end gap-3">

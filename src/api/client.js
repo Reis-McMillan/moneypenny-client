@@ -3,6 +3,9 @@ import { isTokenExpired } from '../lib/jwt.js'
 
 const API_BASE = API_CONFIG.baseUrl
 
+let refreshInFlight = null
+let exchangeInFlight = null
+
 function setTokens({ access_token, refresh_token, id_token, exchanged_token }) {
   if (access_token) localStorage.setItem('access_token', access_token)
   if (refresh_token) localStorage.setItem('refresh_token', refresh_token)
@@ -38,34 +41,44 @@ async function ensureValidToken(token) {
   return null
 }
 
+async function isTokenError(response) {
+  if (response.status !== 400) return false
+  const body = await response.clone().json().catch(() => ({}))
+  return body.detail === 'Invalid auth token.'
+}
+
 async function refreshAccessToken() {
-  const { refreshToken } = getTokens()
-  if (!refreshToken) return false
+  if (refreshInFlight) return refreshInFlight
+  refreshInFlight = (async () => {
+    const { refreshToken } = getTokens()
+    if (!refreshToken) return false
 
-  const params = new URLSearchParams()
-  params.set('grant_type', 'refresh_token')
-  params.set('refresh_token', refreshToken)
-  params.set('client_id', OAUTH2_CONFIG.clientId)
+    const params = new URLSearchParams()
+    params.set('grant_type', 'refresh_token')
+    params.set('refresh_token', refreshToken)
+    params.set('client_id', OAUTH2_CONFIG.clientId)
 
-  try {
-    const res = await fetch(OAUTH2_CONFIG.tokenEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params,
-    })
+    try {
+      const res = await fetch(OAUTH2_CONFIG.tokenEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params,
+      })
 
-    if (res.ok) {
-      const data = await res.json()
-      setTokens(data)
-      return true
+      if (res.ok) {
+        const data = await res.json()
+        setTokens(data)
+        return true
+      }
+    } catch {
+      // refresh failed
+      // probably should redirect back to verification
     }
-  } catch {
-    // refresh failed
-    // probably should redirect back to verification
-  }
 
-  clearTokens()
-  return false
+    clearTokens()
+    return false
+  })().finally(() => { refreshInFlight = null })
+  return refreshInFlight
 }
 
 function buildAuthInitParams(returnUrl) {
@@ -74,45 +87,49 @@ function buildAuthInitParams(returnUrl) {
 }
 
 async function exchangeToken(returnUrl = window.location.pathname + window.location.search) {
-  let { accessToken } = getTokens()
-  if (!accessToken) return false
+  if (exchangeInFlight) return exchangeInFlight
+  exchangeInFlight = (async () => {
+    let { accessToken } = getTokens()
+    if (!accessToken) return false
 
-  accessToken = await ensureValidToken(accessToken)
-  if (!accessToken) return false
+    accessToken = await ensureValidToken(accessToken)
+    if (!accessToken) return false
 
-  const params = new URLSearchParams()
-  params.set('grant_type', 'urn:ietf:params:oauth:grant-type:token-exchange')
-  params.set('client_id', OAUTH2_CONFIG.clientId)
-  params.set('subject_token', accessToken)
-  params.set('subject_token_type', 'urn:ietf:params:oauth:token-type:access_token')
-  params.set('audience', API_CONFIG.backendClientId)
+    const params = new URLSearchParams()
+    params.set('grant_type', 'urn:ietf:params:oauth:grant-type:token-exchange')
+    params.set('client_id', OAUTH2_CONFIG.clientId)
+    params.set('subject_token', accessToken)
+    params.set('subject_token_type', 'urn:ietf:params:oauth:token-type:access_token')
+    params.set('audience', API_CONFIG.backendClientId)
 
-  let res
-  try {
-    res = await fetch(OAUTH2_CONFIG.tokenEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params,
-    })
-  } catch {
-    return false
-  }
-
-  if (res.ok) {
-    const data = await res.json()
-    setTokens({ exchanged_token: data.access_token })
-    return true
-  }
-
-  if (res.status === 403) {
-    const details = await res.json().catch(() => ({}))
-    if (details.error_description === 'User has not consented to target client.') {
-      const queryString = buildAuthInitParams(returnUrl)
-      window.location.href = `${API_BASE}/auth/initialize?${queryString}`
+    let res
+    try {
+      res = await fetch(OAUTH2_CONFIG.tokenEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params,
+      })
+    } catch {
+      return false
     }
-  }
 
-  return false
+    if (res.ok) {
+      const data = await res.json()
+      setTokens({ exchanged_token: data.access_token })
+      return true
+    }
+
+    if (res.status === 403) {
+      const details = await res.json().catch(() => ({}))
+      if (details.error_description === 'User has not consented to target client.') {
+        const queryString = buildAuthInitParams(returnUrl)
+        window.location.href = `${API_BASE}/auth/initialize?${queryString}`
+      }
+    }
+
+    return false
+  })().finally(() => { exchangeInFlight = null })
+  return exchangeInFlight
 }
 
 async function request(path, options = {}, origin = window.location.href) {
@@ -133,7 +150,7 @@ async function request(path, options = {}, origin = window.location.href) {
 
   let response = await fetch(url, { ...options, headers })
 
-  if (response.status === 401) {
+  if (await isTokenError(response)) {
     const refreshed = await refreshAccessToken()
     if (refreshed) {
       const exchanged = await exchangeToken(origin)
@@ -162,7 +179,7 @@ async function streamPost(path, body, origin = window.location.href) {
   const url = `${API_BASE}${path}`
   const { exchangedToken } = getTokens()
 
-  const response = await fetch(url, {
+  let response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -170,6 +187,22 @@ async function streamPost(path, body, origin = window.location.href) {
     },
     body: JSON.stringify(body),
   })
+
+  if (await isTokenError(response)) {
+    if (await refreshAccessToken()) {
+      if (await exchangeToken(origin)) {
+        const { exchangedToken: newToken } = getTokens()
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(newToken ? { 'Authorization': `Bearer ${newToken}` } : {}),
+          },
+          body: JSON.stringify(body),
+        })
+      }
+    }
+  }
 
   if (response.status === 403) {
     const data = await response.clone().json().catch(() => ({}))

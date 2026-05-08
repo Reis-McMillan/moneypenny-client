@@ -103,18 +103,18 @@ onBeforeUnmount(() => {
               <thead>
                 <tr class="text-gray-400 border-b border-gray-800">
                   <th class="text-left font-medium py-2">Provider</th>
-                  <th class="text-left font-medium py-2">Subject</th>
+                  <th class="text-left font-medium py-2">Account</th>
                   <th class="text-right font-medium py-2">Count</th>
                 </tr>
               </thead>
               <tbody>
                 <tr
                   v-for="acc in counts.accounts"
-                  :key="`${acc.provider_id}-${acc.subject}`"
+                  :key="`${acc.provider_id}-${acc.email}`"
                   class="border-b border-gray-900 last:border-b-0"
                 >
                   <td class="py-2 text-gray-300 capitalize">{{ acc.provider_id }}</td>
-                  <td class="py-2 text-gray-300 font-mono">{{ acc.subject }}</td>
+                  <td class="py-2 text-gray-300 font-mono">{{ acc.email }}</td>
                   <td class="py-2 text-right text-gray-100 font-mono">{{ acc.count }}</td>
                 </tr>
               </tbody>
@@ -130,7 +130,7 @@ onBeforeUnmount(() => {
               <thead>
                 <tr class="text-gray-400 border-b border-gray-800">
                   <th class="text-left font-medium py-2">Provider</th>
-                  <th class="text-left font-medium py-2">Subject</th>
+                  <th class="text-left font-medium py-2">Account</th>
                   <th class="text-left font-medium py-2">Ingesting</th>
                   <th class="text-left font-medium py-2">Task Alive</th>
                   <th class="text-left font-medium py-2">Last Run</th>
@@ -141,12 +141,12 @@ onBeforeUnmount(() => {
               <tbody>
                 <tr
                   v-for="svc in status.services"
-                  :key="`${svc.provider_id}-${svc.subject}`"
+                  :key="`${svc.provider_id}-${svc.email}`"
                   class="border-b border-gray-900 last:border-b-0"
                   :class="svc.last_error ? 'bg-red-500/5' : ''"
                 >
                   <td class="py-2 text-gray-300 capitalize">{{ svc.provider_id }}</td>
-                  <td class="py-2 text-gray-300 font-mono">{{ svc.subject }}</td>
+                  <td class="py-2 text-gray-300 font-mono">{{ svc.email }}</td>
                   <td class="py-2">
                     <span
                       class="px-2 py-0.5 rounded-md text-xs font-medium"

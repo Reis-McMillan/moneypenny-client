@@ -1,25 +1,45 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { useActions } from '../composables/useActions.js'
+import { useChat } from '../composables/useChat.js'
 
+const route = useRoute()
 const router = useRouter()
 const { isAuthenticated, user, logout } = useAuth()
 const { hasActions, loadActions } = useActions()
+const { threads, activeThreadId, loadThreads, newChat } = useChat()
 const isCollapsed = ref(false)
+
+const inChatView = computed(() => route.path === '/chat' || route.path.startsWith('/chat/'))
 
 async function handleLogout() {
   await logout()
   router.push('/login')
 }
 
+function handleNewChat() {
+  newChat()
+  router.push('/chat')
+}
+
+function handleSelectThread(threadId) {
+  router.push(`/chat/${threadId}`)
+}
+
 onMounted(() => {
-  if (isAuthenticated.value) loadActions()
+  if (isAuthenticated.value) {
+    loadActions()
+    loadThreads()
+  }
 })
 
 watch(isAuthenticated, (val) => {
-  if (val) loadActions()
+  if (val) {
+    loadActions()
+    loadThreads()
+  }
 })
 </script>
 
@@ -53,6 +73,31 @@ watch(isAuthenticated, (val) => {
         </svg>
         <span v-if="!isCollapsed">Chat</span>
       </router-link>
+
+      <div v-if="inChatView && !isCollapsed" class="ml-4 mt-1 mb-2 flex flex-col gap-1 border-l border-slate-800 pl-3">
+        <button
+          @click="handleNewChat"
+          class="text-left px-2 py-1 text-xs font-medium text-indigo-300 hover:text-white hover:bg-slate-800 rounded transition-colors cursor-pointer"
+        >
+          + New Chat
+        </button>
+        <div
+          v-for="thread in threads"
+          :key="thread.thread_id"
+          @click="handleSelectThread(thread.thread_id)"
+          class="px-2 py-1 rounded text-xs cursor-pointer transition-colors truncate"
+          :class="
+            thread.thread_id === activeThreadId
+              ? 'bg-slate-800 text-white'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+          "
+        >
+          {{ thread.title }}
+        </div>
+        <div v-if="!threads.length" class="px-2 py-1 text-xs text-slate-500">
+          No conversations yet
+        </div>
+      </div>
 
       <router-link
         to="/accounts"
@@ -90,7 +135,28 @@ watch(isAuthenticated, (val) => {
       </router-link>
     </nav>
 
-    <div class="mt-auto border-t border-slate-800 p-4">
+    <div class="mt-auto">
+      <div v-if="!isCollapsed" class="border-t border-slate-800 px-4 py-3 space-y-1">
+        <router-link
+          to="/privacy"
+          class="block text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
+        >
+          Privacy Policy
+        </router-link>
+        <router-link
+          to="/ai-transparency"
+          class="block text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
+        >
+          AI Transparency
+        </router-link>
+        <router-link
+          to="/terms"
+          class="block text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
+        >
+          Terms of Service
+        </router-link>
+      </div>
+    <div class="border-t border-slate-800 p-4">
       <template v-if="isAuthenticated">
         <div v-if="!isCollapsed" class="text-slate-400 text-sm truncate mb-3">{{ user?.email }}</div>
         <button
@@ -114,6 +180,7 @@ watch(isAuthenticated, (val) => {
           <span v-if="!isCollapsed">Sign In</span>
         </router-link>
       </template>
+    </div>
     </div>
   </aside>
 </template>

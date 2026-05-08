@@ -37,7 +37,7 @@ async function fetchAccounts() {
 async function linkAccount(providerId) {
   showProviders.value = false
   try {
-    const res = await api.post('/accounts', { provider_id: providerId })
+    const res = await api.post(`/accounts/link?provider_id=${encodeURIComponent(providerId)}`)
     if (res.ok) {
       const data = await res.json()
       if (data.redirect_url) {
@@ -76,7 +76,7 @@ onMounted(async () => {
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div
           v-for="account in accounts"
-          :key="`${account.provider_id}-${account.subject}`"
+          :key="`${account.provider_id}-${account.email}`"
           class="rounded-xl p-6 border"
           :class="findActionForToken(account.token_id) ? 'border-red-500/50 bg-red-950/20' : 'border-gray-800 bg-gray-900'"
         >

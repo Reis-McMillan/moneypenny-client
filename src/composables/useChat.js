@@ -6,6 +6,7 @@ const state = reactive({
   activeThreadId: null,
   messages: [],
   streaming: false,
+  loadingThread: false,
   pendingInterrupts: [],
   lastTokenId: null,
 })
@@ -101,8 +102,13 @@ async function consumeSseStream(response) {
           .split('\n')
           .map((line) => line.replace(/^\s+/, ''))
           .join('\n')
-        state.messages.push({ role: 'human', content: cleaned })
-        state.messages.push({ role: 'ai', content: '' })
+        const last = state.messages[state.messages.length - 1]
+        if (last && last.role === 'ai' && !last.content) {
+          state.messages.splice(state.messages.length - 1, 0, { role: 'human', content: cleaned })
+        } else {
+          state.messages.push({ role: 'human', content: cleaned })
+          state.messages.push({ role: 'ai', content: '' })
+        }
       }
     }
   }
@@ -113,6 +119,7 @@ export function useChat() {
   const messages = computed(() => state.messages)
   const threads = computed(() => state.threads)
   const streaming = computed(() => state.streaming)
+  const loadingThread = computed(() => state.loadingThread)
   const pendingInterrupts = computed(() => state.pendingInterrupts)
 
   async function loadThreads() {
@@ -134,6 +141,7 @@ export function useChat() {
     state.activeThreadId = threadId
     state.messages = []
     state.pendingInterrupts = []
+    state.loadingThread = true
 
     try {
       const res = await api.get(`/chat/${threadId}`)
@@ -146,6 +154,8 @@ export function useChat() {
       }
     } catch {
       // failed to load thread
+    } finally {
+      state.loadingThread = false
     }
   }
 
@@ -188,6 +198,7 @@ export function useChat() {
 
   async function draftEmail({ token_id, content, recipient, recipient_email }) {
     state.lastTokenId = token_id
+    state.messages.push({ role: 'ai', content: '' })
     state.streaming = true
 
     const path = state.activeThreadId
@@ -265,6 +276,7 @@ export function useChat() {
     activeThreadId,
     messages,
     streaming,
+    loadingThread,
     pendingInterrupts,
     loadThreads,
     loadThread,
