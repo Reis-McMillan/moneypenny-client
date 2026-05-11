@@ -13,6 +13,8 @@ const { threads, activeThreadId, loadThreads, newChat } = useChat()
 const isCollapsed = ref(false)
 
 const inChatView = computed(() => route.path === '/chat' || route.path.startsWith('/chat/'))
+const hasTestUserRole = computed(() => user.value?.roles?.includes('test-user') ?? false)
+const hasAdminRole = computed(() => user.value?.roles?.includes('admin') ?? false)
 
 async function handleLogout() {
   await logout()
@@ -64,6 +66,7 @@ watch(isAuthenticated, (val) => {
     </div>
 
     <nav v-if="isAuthenticated" class="flex-1 flex flex-col gap-1 px-3 py-4 overflow-y-auto">
+      <template v-if="hasTestUserRole">
       <router-link
         to="/chat"
         class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium hover:text-white hover:bg-slate-800 transition-colors"
@@ -132,6 +135,18 @@ watch(isAuthenticated, (val) => {
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
         </svg>
         <span v-if="!isCollapsed">Ingestion</span>
+      </router-link>
+      </template>
+
+      <router-link
+        v-if="hasAdminRole"
+        to="/admin"
+        class="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium hover:text-white hover:bg-slate-800 transition-colors"
+      >
+        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+        <span v-if="!isCollapsed">Admin</span>
       </router-link>
     </nav>
 

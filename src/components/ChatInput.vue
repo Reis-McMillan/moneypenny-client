@@ -111,12 +111,12 @@ function onSelectChange(e) {
         rows="1"
         placeholder="Message Moneypenny..."
         :disabled="disabled"
-        class="flex-1 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+        class="flex-1 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 px-4 py-3 min-h-12 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
       />
       <button
         type="submit"
         :disabled="disabled || !message.trim()"
-        class="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg p-3 transition-colors cursor-pointer"
+        class="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg h-12 w-12 flex items-center justify-center transition-colors cursor-pointer"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19V5m0 0l-7 7m7-7l7 7" />

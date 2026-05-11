@@ -17,14 +17,21 @@ export function useAuth() {
   async function fetchUser() {
     state.loading = true
     try {
-      const { idToken } = getTokens()
+      const { idToken, exchangedToken } = getTokens()
       if (!idToken) {
         state.user = null
         return
       }
-      const payload = decodeJwtPayload(idToken)
-      if (payload) {
-        state.user = { email: payload.email, sub: payload.sub }
+      const idPayload = decodeJwtPayload(idToken)
+      const exchangedPayload = exchangedToken
+        ? decodeJwtPayload(exchangedToken)
+        : null
+      if (idPayload) {
+        state.user = {
+          email: idPayload.email,
+          sub: idPayload.sub,
+          roles: exchangedPayload?.roles || [],
+        }
       } else {
         state.user = null
       }
